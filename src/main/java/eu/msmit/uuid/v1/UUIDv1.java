@@ -15,8 +15,6 @@
  */
 package eu.msmit.uuid.v1;
 
-import java.util.Iterator;
-import java.util.ServiceLoader;
 import java.util.UUID;
 
 /**
@@ -26,8 +24,12 @@ import java.util.UUID;
  * Underlying implementations and wrappers provide the necessary speed
  * improvements suggested by the document.
  * 
- * For example the {@link ParallelGenerator} will provide unprecedented speed
- * with a theoretical 25ns per UUID.
+ * For example the {@link ParallelGenerator} rotates between multiple
+ * generators, each with its own node.
+ * 
+ * The system generator is the {@link ParallelGenerator}, unless the system
+ * property {@value #GENERATOR_PROPERTY} contains the name of another
+ * {@link Generator} class with a public no-arg constructor.
  * 
  * For this implementation, 'system' is considered to be a Java process with a
  * Generator instance. Shared stable store would be process memory in this case.
@@ -64,20 +66,44 @@ import java.util.UUID;
  * @since Mar 25, 2015
  */
 public class UUIDv1 {
-	private static final Generator GENERATOR;
+	/**
+	 * Name of the system property to select the system generator class
+	 */
+	public static final String GENERATOR_PROPERTY = "eu.msmit.uuid.v1.generator";
 
-	static {
-		ServiceLoader<Generator> serviceLoader = ServiceLoader
-				.load(Generator.class);
-		Iterator<Generator> it = serviceLoader.iterator();
+	private static final Generator GENERATOR = createGenerator(System
+			.getProperty(GENERATOR_PROPERTY));
 
-		Generator generator = it.hasNext() ? it.next() : null;
+	private UUIDv1() {
+	}
 
-		if (generator == null) {
-			generator = new ParallelGenerator();
+	/**
+	 * @param className
+	 *            name of the {@link Generator} class, or null/empty for the
+	 *            {@link ParallelGenerator}
+	 * @return a new generator
+	 * @throws IllegalStateException
+	 *             when the class is not a usable generator
+	 */
+	public static Generator createGenerator(String className) {
+		if (className == null || className.trim().isEmpty()) {
+			return new ParallelGenerator();
 		}
 
-		GENERATOR = generator;
+		try {
+			ClassLoader loader = Thread.currentThread()
+					.getContextClassLoader();
+			if (loader == null) {
+				loader = UUIDv1.class.getClassLoader();
+			}
+
+			Class<?> type = Class.forName(className.trim(), true, loader);
+			return type.asSubclass(Generator.class).getDeclaredConstructor()
+					.newInstance();
+		} catch (Exception e) {
+			throw new IllegalStateException("Invalid generator in "
+					+ GENERATOR_PROPERTY + ": " + className, e);
+		}
 	}
 
 	/**

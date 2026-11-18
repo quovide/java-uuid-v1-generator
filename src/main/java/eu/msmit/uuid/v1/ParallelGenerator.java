@@ -56,16 +56,14 @@ public class ParallelGenerator implements Generator {
 
 		Set<Long> nodes = new HashSet<Long>();
 		for (int p = 0; p < concurrency; p++) {
-			try {
-				pool_[p] = new DefaultGenerator();
+			Node node = new Node();
 
-				if (!nodes.add(pool_[p].next().node())) {
-					throw new Exception("Duplicate node error in "
-							+ getClass().getSimpleName());
-				}
-			} catch (Exception e) {
-				throw new Error(e);
+			// Every generator of the pool needs its own node
+			while (!nodes.add(node.getValue())) {
+				node = new Node();
 			}
+
+			pool_[p] = new DefaultGenerator(node);
 		}
 	}
 

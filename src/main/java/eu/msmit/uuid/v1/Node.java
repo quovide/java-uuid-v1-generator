@@ -22,19 +22,26 @@ import java.net.InetAddress;
 import java.net.NetworkInterface;
 import java.net.UnknownHostException;
 import java.security.MessageDigest;
+import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.security.NoSuchAlgorithmException;
+import java.security.SecureRandom;
 import java.util.Enumeration;
 
 /**
  * Represents an instance of a node on a host, with x network interfaces, in the
  * specified environment, with process ID x, and instance of the Node class with
- * ID x.
+ * ID x. Random data is mixed in, so nodes stay unique when the environment is
+ * identical, like replicas of the same container image.
  * 
  * @author Marijn Smit (info@msmit.eu)
  * @since Mar 24, 2015
  */
 public class Node {
-	private static final byte[] LOCALHOST = "localhost".getBytes();
+	private static final Charset CHARSET = StandardCharsets.UTF_8;
+	private static final SecureRandom RANDOM = new SecureRandom();
+	private static final int RANDOM_SIZE = 16;
+	private static final byte[] LOCALHOST = "localhost".getBytes(CHARSET);
 	private static final byte[] EMPTY_NETWORK_INTERFACE = new byte[] {
 			(byte) 0xFF, (byte) 0xFF, (byte) 0xFF, (byte) 0xFF, (byte) 0xFF,
 			(byte) 0xFF };
@@ -46,12 +53,13 @@ public class Node {
 
 	public Node() {
 		try {
-			MessageDigest digest = MessageDigest.getInstance("md5");
+			MessageDigest digest = MessageDigest.getInstance("SHA-256");
 			digestHost(digest);
 			digestNetworkInterfaces(digest);
 			digestEnv(digest);
 			digestProcess(digest);
 			digestInstance(digest);
+			digestRandom(digest);
 
 			byte[] buf = digest.digest();
 
@@ -66,8 +74,14 @@ public class Node {
 			node_ = v;
 			digest = null; // hint the GC
 		} catch (NoSuchAlgorithmException e) {
-			throw new Error(e);
+			throw new IllegalStateException(e);
 		}
+	}
+
+	protected void digestRandom(MessageDigest digest) {
+		byte[] buf = new byte[RANDOM_SIZE];
+		RANDOM.nextBytes(buf);
+		digest.update(buf);
 	}
 
 	protected void digestInstance(MessageDigest digest) {
@@ -116,12 +130,12 @@ public class Node {
 		for (String prop : ENV) {
 			try {
 				String val = System.getProperty(prop);
-				digest.update(prop.getBytes());
+				digest.update(prop.getBytes(CHARSET));
 				if (val != null) {
-					digest.update(val.getBytes());
+					digest.update(val.getBytes(CHARSET));
 				}
 			} catch (Exception e) {
-				digest.update(prop.getBytes());
+				digest.update(prop.getBytes(CHARSET));
 			}
 		}
 	}
@@ -141,7 +155,7 @@ public class Node {
 				return;
 			}
 
-			digest.update(name.getBytes());
+			digest.update(name.getBytes(CHARSET));
 		} catch (UnknownHostException e) {
 			digest.update(LOCALHOST);
 		}

@@ -18,6 +18,7 @@ package eu.msmit.uuid.v1;
 import java.security.SecureRandom;
 import java.util.Random;
 import java.util.UUID;
+import java.util.concurrent.locks.LockSupport;
 
 /**
  * The base {@link UUID} generator implementation.
@@ -41,18 +42,29 @@ public class DefaultGenerator implements Generator {
 	 * System.longTimeMillis() returns time from january 1st 1970. UUID time
 	 * starts with Gregorian calendar (15-oct-1582).
 	 */
-	private static long UUID_EPOCH_TO_UTC_EPOCH_MS = 0xB1D069B5400L;
+	private static final long UUID_EPOCH_TO_UTC_EPOCH_MS = 0xB1D069B5400L;
 
 	/**
 	 * Maximum ticks per millisecond interval (1 millisecond = 1 000 000
 	 * nanoseconds) / 100
 	 */
-	private static long INTERVALS_PER_MS = 10000L;
+	private static final long INTERVALS_PER_MS = 10000L;
 
 	/**
 	 * Maximum size of the gap is ms
 	 */
 	private static final int MAX_GAP_SIZE = 50;
+
+	/**
+	 * Amount of times to yield while waiting for the next timestamp, before
+	 * the thread is parked to save CPU time
+	 */
+	private static final int MAX_SPINS = 100;
+
+	/**
+	 * Time to park the thread while waiting for the next timestamp
+	 */
+	private static final long PARK_NANOS = 50000L;
 
 	private final long node_;
 	private long tsnow_;
@@ -194,16 +206,23 @@ public class DefaultGenerator implements Generator {
 	}
 
 	/**
-	 * Waits for next timestamp, when pounding against {@link #INTERVALS_PER_MS}
+	 * Waits for next timestamp, when pounding against {@link #INTERVALS_PER_MS}.
+	 * The wait ends when the clock changes, which is one clock resolution at
+	 * most. An interrupt does not end the wait, and the interrupt status of
+	 * the thread is left untouched.
 	 * 
 	 * @return a timestamp neq to timestamp, could be less in case of time skew
 	 */
 	private long awaitNextTimestamp(final long timestamp) {
 		long now;
+		int spins = 0;
 
-		while ((now = currentTimeMs()) == timestamp
-				&& !Thread.currentThread().isInterrupted()) {
-			Thread.yield();
+		while ((now = currentTimeMs()) == timestamp) {
+			if (spins++ < MAX_SPINS) {
+				Thread.yield();
+			} else {
+				LockSupport.parkNanos(PARK_NANOS);
+			}
 		}
 
 		return now;

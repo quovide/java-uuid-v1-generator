@@ -9,17 +9,17 @@
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-compiler-plugin</artifactId>
-				<version>3.2</version>
+				<version>3.13.0</version>
 				<configuration>
-					<target>1.6</target>
-					<source>1.6</source>
+					<target>1.8</target>
+					<source>1.8</source>
 					<encoding>UTF-8</encoding>
 				</configuration>
 			</plugin>
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-resources-plugin</artifactId>
-				<version>2.7</version>
+				<version>3.3.1</version>
 				<configuration>
 					<encoding>UTF-8</encoding>
 				</configuration>
@@ -27,7 +27,7 @@
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-release-plugin</artifactId>
-				<version>2.5.1</version>
+				<version>3.1.1</version>
 				<configuration>
 					<pushChanges>false</pushChanges>
 					<tagNameFormat>@{version}</tagNameFormat>
@@ -40,7 +40,7 @@
 		<dependency>
 			<groupId>junit</groupId>
 			<artifactId>junit</artifactId>
-			<version>4.12</version>
+			<version>4.13.2</version>
 			<scope>test</scope>
 		</dependency>
 		<dependency>
@@ -51,18 +51,19 @@
 		</dependency>
 	</dependencies>
 	<scm>
-		<connection>scm:git:https://git.msmit.eu/r/utils/uuid-v1-generator.git</connection>
-		<developerConnection>scm:git:https://git.msmit.eu/r/utils/uuid-v1-generator.git</developerConnection>
+		<connection>scm:git:https://github.com/quovide/java-uuid-v1-generator.git</connection>
+		<developerConnection>scm:git:https://github.com/quovide/java-uuid-v1-generator.git</developerConnection>
+		<url>https://github.com/quovide/java-uuid-v1-generator</url>
 		<tag>HEAD</tag>
 	</scm>
 	<distributionManagement>
 		<repository>
-			<id>deployment</id>
-			<url>http://maven.msmit.eu/content/repositories/releases/</url>
+			<id>github</id>
+			<url>https://maven.pkg.github.com/quovide/java-uuid-v1-generator</url>
 		</repository>
 		<snapshotRepository>
-			<id>deployment</id>
-			<url>http://maven.msmit.eu/content/repositories/snapshots/</url>
+			<id>github</id>
+			<url>https://maven.pkg.github.com/quovide/java-uuid-v1-generator</url>
 		</snapshotRepository>
 	</distributionManagement>
 </project>
